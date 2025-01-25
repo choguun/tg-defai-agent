@@ -13,7 +13,6 @@ import {
     type Provider,
     type Memory,
     type State,
-    type ICacheManager,
     elizaLogger,
 } from "@elizaos/core";
 import type {
@@ -27,25 +26,18 @@ import type {
     TestClient,
 } from "viem";
 import * as viemChains from "viem/chains";
-import { DeriveKeyProvider, TEEMode } from "@elizaos/plugin-tee";
-import NodeCache from "node-cache";
-import * as path from "path";
 
 import type { SupportedChain } from "../types/index";
 
 import swapAbi from "../abi/swap";
 
 export class WalletProvider {
-    private cache: NodeCache;
-    private cacheKey = "evm/wallet";
     private currentChain: SupportedChain = "mantle";
-    private CACHE_EXPIRY_SEC = 5;
     chains: Record<string, Chain> = { ...viemChains };
     account: PrivateKeyAccount;
 
     constructor(
         accountOrPrivateKey: PrivateKeyAccount | `0x${string}`,
-        private cacheManager: ICacheManager,
         chains?: Record<string, Chain>
     ) {
         this.setAccount(accountOrPrivateKey);
@@ -54,8 +46,6 @@ export class WalletProvider {
         if (chains && Object.keys(chains).length > 0) {
             this.setCurrentChain(Object.keys(chains)[0] as SupportedChain);
         }
-
-        this.cache = new NodeCache({ stdTTL: this.CACHE_EXPIRY_SEC });
     }
 
     getAddress(): Address {
@@ -111,23 +101,12 @@ export class WalletProvider {
     }
 
     async getWalletBalance(): Promise<string | null> {
-        const cacheKey = "walletBalance_" + this.currentChain;
-        const cachedData = await this.getCachedData<string>(cacheKey);
-        if (cachedData) {
-            elizaLogger.log(
-                "Returning cached wallet balance for chain: " +
-                    this.currentChain
-            );
-            return cachedData;
-        }
-
         try {
             const client = this.getPublicClient(this.currentChain);
             const balance = await client.getBalance({
                 address: this.account.address,
             });
             const balanceFormatted = formatUnits(balance, 18);
-            this.setCachedData<string>(cacheKey, balanceFormatted);
             elizaLogger.log(
                 "Wallet balance cached for chain: ",
                 this.currentChain
@@ -152,45 +131,6 @@ export class WalletProvider {
             console.error("Error getting wallet balance:", error);
             return null;
         }
-    }
-
-    private async readFromCache<T>(key: string): Promise<T | null> {
-        const cached = await this.cacheManager.get<T>(
-            path.join(this.cacheKey, key)
-        );
-        return cached;
-    }
-
-    private async writeToCache<T>(key: string, data: T): Promise<void> {
-        await this.cacheManager.set(path.join(this.cacheKey, key), data, {
-            expires: Date.now() + this.CACHE_EXPIRY_SEC * 1000,
-        });
-    }
-
-    private async getCachedData<T>(key: string): Promise<T | null> {
-        // Check in-memory cache first
-        const cachedData = this.cache.get<T>(key);
-        if (cachedData) {
-            return cachedData;
-        }
-
-        // Check file-based cache
-        const fileCachedData = await this.readFromCache<T>(key);
-        if (fileCachedData) {
-            // Populate in-memory cache
-            this.cache.set(key, fileCachedData);
-            return fileCachedData;
-        }
-
-        return null;
-    }
-
-    private async setCachedData<T>(cacheKey: string, data: T): Promise<void> {
-        // Set in-memory cache
-        this.cache.set(cacheKey, data);
-
-        // Write to file-based cache
-        await this.writeToCache(cacheKey, data);
     }
 
     private setAccount = (
@@ -236,16 +176,14 @@ export class WalletProvider {
                 chain: this.chains[this.currentChain],
                 account: this.account
             });
-            console.log("Swap executed:", swap);
+            elizaLogger.log("Swap executed:", swap);
         } catch (error) {
-            console.error("Error swapping tokens:", error);
+            elizaLogger.error("Error swapping tokens:", error);
         }
     }
 }
 
 export const initWalletProvider = async (runtime: IAgentRuntime) => {
-    const teeMode = runtime.getSetting("TEE_MODE") || TEEMode.OFF;
-    
     const providerUrl = runtime.getSetting("EVM_PROVIDER_URL") as string;
 
     const chains: Record<string, Chain> = {
@@ -263,34 +201,13 @@ export const initWalletProvider = async (runtime: IAgentRuntime) => {
         },
     };
 
-    if (teeMode !== TEEMode.OFF) {
-        const walletSecretSalt = runtime.getSetting("WALLET_SECRET_SALT");
-        if (!walletSecretSalt) {
-            throw new Error(
-                "WALLET_SECRET_SALT required when TEE_MODE is enabled"
-            );
-        }
-
-        const deriveKeyProvider = new DeriveKeyProvider(teeMode);
-        const deriveKeyResult = await deriveKeyProvider.deriveEcdsaKeypair(
-            walletSecretSalt,
-            "evm",
-            runtime.agentId
-        );
-        return new WalletProvider(
-            deriveKeyResult.keypair,
-            runtime.cacheManager,
-            chains
-        );
-    } else {
-        const privateKey = runtime.getSetting(
-            "EVM_PRIVATE_KEY"
-        ) as `0x${string}`;
-        if (!privateKey) {
-            throw new Error("EVM_PRIVATE_KEY is missing");
-        }
-        return new WalletProvider(privateKey, runtime.cacheManager, chains);
+    const privateKey = runtime.getSetting(
+        "EVM_PRIVATE_KEY"
+    ) as `0x${string}`;
+    if (!privateKey) {
+        throw new Error("EVM_PRIVATE_KEY is missing");
     }
+    return new WalletProvider(privateKey, chains);
 };
 
 export const evmWalletProvider: Provider = {

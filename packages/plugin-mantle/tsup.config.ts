@@ -17,7 +17,9 @@ export default defineConfig([
         "https",
         "http",
         "agentkeepalive",
-        "zod"
+        "zod",
+        "node-cache",
+        "viem",
     ],
     treeshake: true,
     splitting: false,
