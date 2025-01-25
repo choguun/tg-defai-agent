@@ -264,37 +264,23 @@ export class WalletProvider {
     }
 }
 
-const genChainsFromRuntime = (
-    runtime: IAgentRuntime
-): Record<string, Chain> => {
-    const chainNames =
-        (runtime.character.settings.chains?.evm as SupportedChain[]) || [];
-    const chains = {};
-
-    chainNames.forEach((chainName) => {
-        const rpcUrl = runtime.getSetting(
-            "ETHEREUM_PROVIDER_" + chainName.toUpperCase()
-        );
-        const chain = WalletProvider.genChainFromName(chainName, rpcUrl);
-        chains[chainName] = chain;
-    });
-
-    const mainnet_rpcurl = runtime.getSetting("EVM_PROVIDER_URL");
-    if (mainnet_rpcurl) {
-        const chain = WalletProvider.genChainFromName(
-            "mainnet",
-            mainnet_rpcurl
-        );
-        chains["mainnet"] = chain;
-    }
-
-    return chains;
-};
-
 export const initWalletProvider = async (runtime: IAgentRuntime) => {
     const teeMode = runtime.getSetting("TEE_MODE") || TEEMode.OFF;
 
-    const chains = genChainsFromRuntime(runtime);
+    const chains = {
+        "mantle": {
+            id: 5000,
+            name: "mantle",
+            rpcUrls: {
+                default: { http: [runtime.getSetting("EVM_PROVIDER_URL")] },
+            },
+            nativeCurrency: {
+                name: "Mantle",
+                symbol: "MANTLE",
+                decimals: 18,
+            },
+        },
+    };
 
     if (teeMode !== TEEMode.OFF) {
         const walletSecretSalt = runtime.getSetting("WALLET_SECRET_SALT");
