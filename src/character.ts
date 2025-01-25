@@ -1,5 +1,5 @@
 import { Character, Clients, defaultCharacter, ModelProviderName } from "@elizaos/core";
-import { mantlePlugin } from "@ai16z/plugin-mantle";
+import { mantlePlugin } from "@elizaos/plugin-mantle";
 
 export const character: Character = {
     ...defaultCharacter,

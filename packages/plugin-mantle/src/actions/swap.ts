@@ -1,4 +1,4 @@
-import { composeContext, Content, generateObject } from "@elizaos/core";
+import { composeContext, Content, elizaLogger, generateObject, generateObjectDeprecated } from "@elizaos/core";
 import { booleanFooter } from "@elizaos/core";
 import {
     type Action,
@@ -8,45 +8,47 @@ import {
     ModelClass,
     type State,
 } from "@elizaos/core";
+import { initWalletProvider } from "../providers/wallet";
 import { z } from "zod";
 
 
 const SwapSchema = z.object({
-	srcToken: z.string(),
-	destToken: z.string(),
+	tokenAddress: z.string(),
+	recipient: z.string(),
 	amount: z.string(),
 	useAGW: z.boolean(),
+	tokenSymbol: z.string(),
 });
 
-const validatedSwapSchema = z.object({
-	srcToken: z
-		.string(),
-	destToken: z
-		.string(),
-	amount: z.string(),
-	useAGW: z.boolean(),
-});
+export type SwapContent = z.infer<typeof SwapSchema> & Content;
 
-export interface SwapContent extends Content {
-	srcToken: string;
-	destToken: string;
-	amount: string | number;
-	useAGW: boolean;
+
+export const swapTemplate = `Respond with a JSON markdown block containing only the extracted values. Use null for any values that cannot be determined.
+
+Example response:
+\`\`\`json
+{
+    "tokenAddress": "<TOKEN_ADDRESS>",
+    "recipient": "<TOKEN_ADDRESS>",
+    "amount": "1000",
+    "useAGW": true,
+    "tokenSymbol": "USDC"
 }
+\`\`\`
 
-export const swapTemplate =
-    `Based on the conversation so far:
+User message:
+"{{currentMessage}}"
 
-{{recentMessages}}
+Given the message, extract the following information about the requested token transfer:
+- Token contract address
+- Recipient wallet address
+- Amount to transfer
+- Whether to use Abstract Global Wallet aka AGW
+- The symbol of the token that wants to be transferred. Between 1 to 6 characters usually.
 
-Should {{agentName}} start following this room, eagerly participating without explicit mentions?
-Respond with YES if:
-- The user has directly asked {{agentName}} to follow the conversation or participate more actively
-- The conversation topic is highly engaging and {{agentName}}'s input would add significant value
-- {{agentName}} has unique insights to contribute and the users seem receptive
-
-Otherwise, respond with NO.
-` + booleanFooter;
+If the user did not specify "global wallet", "AGW", "agw", or "abstract global wallet" in their message, set useAGW to false, otherwise set it to true.
+s
+Respond with a JSON markdown block containing only the extracted values.`;
 
 export const swapAction: Action = {
     name: "SWAP_TOKEN",
@@ -56,23 +58,40 @@ export const swapAction: Action = {
     description:
         "Swap tokens on Mantle",
     validate: async (runtime: IAgentRuntime, message: Memory) => true,
-    handler: async (runtime: IAgentRuntime, message: Memory) => {
-        const state = await runtime.composeState(message);
+    handler: async (runtime: IAgentRuntime, message: Memory, state: State) => {
+        elizaLogger.log("Starting Mantle SWAP handler...");
+        const walletProvider = await initWalletProvider(runtime);
+        // const action = new SwapAction(walletProvider);
 
-        const swapContext = composeContext({
-            state,
-            template: swapTemplate, // Define this template separately
-        });
+        if (!state) {
+            state = (await runtime.composeState(message)) as State;
+        } else {
+            state = await runtime.updateRecentMessageState(state);
+        }
 
-        	// Generate transfer content
-		const content = (
-			await generateObject({
-				runtime,
-				context: swapContext,
-				modelClass: ModelClass.LARGE,
-				schema: SwapSchema,
-			})
-		).object as SwapContent;
+        try {
+            elizaLogger.log("Composing swap context...");
+            // Compose swap context
+            const swapContext = composeContext({
+                state,
+                template: swapTemplate,
+            });
+            const content = await generateObjectDeprecated({
+                runtime,
+                context: swapContext,
+                modelClass: ModelClass.LARGE,
+            });
+
+            const swapOptions = {
+                chain: content.chain,
+                fromToken: content.inputToken,
+                toToken: content.outputToken,
+                amount: content.amount,
+                slippage: content.slippage,
+            };
+        } catch (error) {
+            elizaLogger.error("Error generating swap content:", error);
+        }
 
 
     },

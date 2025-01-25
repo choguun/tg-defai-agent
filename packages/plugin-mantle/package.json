@@ -1,5 +1,5 @@
 {
-  "name": "@ai16z/plugin-mantle",
+  "name": "@elizaos/plugin-mantle",
   "version": "0.1.0",
   "type": "module",
   "main": "dist/index.js",
