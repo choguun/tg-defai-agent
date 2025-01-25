@@ -1,10 +1,11 @@
 import { Character, Clients, defaultCharacter, ModelProviderName } from "@elizaos/core";
+import { mantlePlugin } from "@ai16z/plugin-mantle";
 
 export const character: Character = {
     ...defaultCharacter,
     name: "DeFAI Agent",
-    // plugins: [],
-    // clients: [],
+    plugins: [mantlePlugin],
+    clients: [Clients.TELEGRAM],
     modelProvider: ModelProviderName.OPENAI,
     knowledge: [
         "The Solana DeFi ecosystem is one of the most innovative and rapidly growing sectors within the blockchain space. Leveraging Solana's high-performance blockchain infrastructure, which supports high throughput, low latency, and low transaction fees, the ecosystem provides a fertile ground for decentralized finance applications to flourish.",
