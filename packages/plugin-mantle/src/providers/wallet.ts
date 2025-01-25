@@ -152,21 +152,6 @@ export class WalletProvider {
         }
     }
 
-    addChain(chain: Record<string, Chain>) {
-        this.setChains(chain);
-    }
-
-    switchChain(chainName: SupportedChain, customRpcUrl?: string) {
-        if (!this.chains[chainName]) {
-            const chain = WalletProvider.genChainFromName(
-                chainName,
-                customRpcUrl
-            );
-            this.addChain({ [chainName]: chain });
-        }
-        this.setCurrentChain(chainName);
-    }
-
     private async readFromCache<T>(key: string): Promise<T | null> {
         const cached = await this.cacheManager.get<T>(
             path.join(this.cacheKey, key)
@@ -238,30 +223,6 @@ export class WalletProvider {
         return http(chain.rpcUrls.default.http[0]);
     };
 
-    static genChainFromName(
-        chainName: string,
-        customRpcUrl?: string | null
-    ): Chain {
-        const baseChain = viemChains[chainName];
-
-        if (!baseChain?.id) {
-            throw new Error("Invalid chain name");
-        }
-
-        const viemChain: Chain = customRpcUrl
-            ? {
-                  ...baseChain,
-                  rpcUrls: {
-                      ...baseChain.rpcUrls,
-                      custom: {
-                          http: [customRpcUrl],
-                      },
-                  },
-              }
-            : baseChain;
-
-        return viemChain;
-    }
 }
 
 export const initWalletProvider = async (runtime: IAgentRuntime) => {
