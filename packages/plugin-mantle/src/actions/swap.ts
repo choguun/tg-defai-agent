@@ -11,28 +11,22 @@ import {
 import { initWalletProvider } from "../providers/wallet";
 import { z } from "zod";
 
-
 const SwapSchema = z.object({
-	tokenAddress: z.string(),
-	recipient: z.string(),
 	amount: z.string(),
-	useAGW: z.boolean(),
-	tokenSymbol: z.string(),
+	srcToken: z.string(),
+	destToken: z.string(),
 });
 
 export type SwapContent = z.infer<typeof SwapSchema> & Content;
-
 
 export const swapTemplate = `Respond with a JSON markdown block containing only the extracted values. Use null for any values that cannot be determined.
 
 Example response:
 \`\`\`json
 {
-    "tokenAddress": "<TOKEN_ADDRESS>",
-    "recipient": "<TOKEN_ADDRESS>",
+    "srcToken": "<TOKEN_ADDRESS>",
+    "destToken": "<TOKEN_ADDRESS>",
     "amount": "1000",
-    "useAGW": true,
-    "tokenSymbol": "USDC"
 }
 \`\`\`
 
@@ -40,15 +34,20 @@ User message:
 "{{currentMessage}}"
 
 Given the message, extract the following information about the requested token transfer:
-- Token contract address
-- Recipient wallet address
-- Amount to transfer
-- Whether to use Abstract Global Wallet aka AGW
-- The symbol of the token that wants to be transferred. Between 1 to 6 characters usually.
+- srcToken
+- destToken
+- Amount to swap
 
-If the user did not specify "global wallet", "AGW", "agw", or "abstract global wallet" in their message, set useAGW to false, otherwise set it to true.
-s
 Respond with a JSON markdown block containing only the extracted values.`;
+
+const TOKEN_ADDRESSES = {
+    "MNT": "0x3c499c542cef5e3811e1192ce70d8cc03d5c3359",
+    "USDC": "0x09bc4e0d864854c6afb6eb9a9cdf58ac190d0df9",
+};
+
+const TOKEN_DECIMALS = {
+    "MNT": 18,
+};
 
 export const swapAction: Action = {
     name: "SWAP_TOKEN",
@@ -83,11 +82,9 @@ export const swapAction: Action = {
             });
 
             const swapOptions = {
-                chain: content.chain,
-                fromToken: content.inputToken,
-                toToken: content.outputToken,
+                srcToken: content.srcToken,
+                destToken: content.destToken,
                 amount: content.amount,
-                slippage: content.slippage,
             };
         } catch (error) {
             elizaLogger.error("Error generating swap content:", error);

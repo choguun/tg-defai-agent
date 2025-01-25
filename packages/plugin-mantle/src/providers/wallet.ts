@@ -31,12 +31,14 @@ import { DeriveKeyProvider, TEEMode } from "@elizaos/plugin-tee";
 import NodeCache from "node-cache";
 import * as path from "path";
 
-import type { SupportedChain } from "../types";
+import type { SupportedChain } from "../types/index";
+
+import swapAbi from "../abi/swap";
 
 export class WalletProvider {
     private cache: NodeCache;
     private cacheKey = "evm/wallet";
-    private currentChain: SupportedChain = "mainnet";
+    private currentChain: SupportedChain = "mantle";
     private CACHE_EXPIRY_SEC = 5;
     chains: Record<string, Chain> = { ...viemChains };
     account: PrivateKeyAccount;
@@ -223,6 +225,22 @@ export class WalletProvider {
         return http(chain.rpcUrls.default.http[0]);
     };
 
+    async swap(swapOptions: any): Promise<void> {
+        const client = this.getWalletClient(this.currentChain);
+        try {
+            const swap = await client.writeContract({
+                address: swapOptions.srcToken as `0x${string}`,
+                abi: swapAbi,
+                functionName: "swapExactInputSingle",
+                args: [swapOptions.srcToken, swapOptions.destToken, swapOptions.amountIn],
+                chain: this.chains[this.currentChain],
+                account: this.account
+            });
+            console.log("Swap executed:", swap);
+        } catch (error) {
+            console.error("Error swapping tokens:", error);
+        }
+    }
 }
 
 export const initWalletProvider = async (runtime: IAgentRuntime) => {
