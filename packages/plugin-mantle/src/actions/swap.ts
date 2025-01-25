@@ -1,4 +1,4 @@
-import { composeContext, Content, elizaLogger, generateObject, generateObjectDeprecated } from "@elizaos/core";
+import { composeContext, Content, elizaLogger, generateObject, generateObjectDeprecated, HandlerCallback } from "@elizaos/core";
 import { booleanFooter } from "@elizaos/core";
 import {
     type Action,
@@ -57,7 +57,11 @@ export const swapAction: Action = {
     description:
         "Swap tokens on Mantle",
     validate: async (runtime: IAgentRuntime, message: Memory) => true,
-    handler: async (runtime: IAgentRuntime, message: Memory, state: State) => {
+    handler: async ( runtime: IAgentRuntime,
+        message: Memory,
+        state: State | undefined,
+        _options: { [key: string]: unknown; } | undefined,
+        callback?: HandlerCallback) => {
         elizaLogger.log("Starting Mantle SWAP handler...");
         const walletProvider = await initWalletProvider(runtime);
         // const action = new SwapAction(walletProvider);
@@ -86,6 +90,16 @@ export const swapAction: Action = {
                 destToken: content.destToken,
                 amount: content.amount,
             };
+
+            const swap = await walletProvider.swap(swapOptions);
+
+            elizaLogger.success("Swap executed successfully:");
+
+            callback?.({
+                text: "Swap executed successfully"
+            });
+
+            return true;
         } catch (error) {
             elizaLogger.error("Error generating swap content:", error);
         }
