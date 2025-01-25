@@ -10,11 +10,11 @@ const config: HardhatUserConfig = {
     networks: {
         mantle: {
             url: "https://rpc.mantle.xyz", //mainnet
-            accounts: [process.env.ACCOUNT_PRIVATE_KEY ?? ""],
+            accounts: [process.env.PRIVATE_KEY ?? ""],
         },
         mantleSepolia: {
             url: "https://rpc.sepolia.mantle.xyz", // Sepolia Testnet
-            accounts: [process.env.ACCOUNT_PRIVATE_KEY ?? ""],
+            accounts: [process.env.PRIVATE_KEY ?? ""],
         },
     },
 };
