@@ -266,13 +266,15 @@ export class WalletProvider {
 
 export const initWalletProvider = async (runtime: IAgentRuntime) => {
     const teeMode = runtime.getSetting("TEE_MODE") || TEEMode.OFF;
+    
+    const providerUrl = runtime.getSetting("EVM_PROVIDER_URL") as string;
 
-    const chains = {
+    const chains: Record<string, Chain> = {
         "mantle": {
             id: 5000,
             name: "mantle",
             rpcUrls: {
-                default: { http: [runtime.getSetting("EVM_PROVIDER_URL")] },
+                default: { http: [providerUrl] },
             },
             nativeCurrency: {
                 name: "Mantle",
