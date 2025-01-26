@@ -2,7 +2,7 @@ import { ethers } from "hardhat";
 
 async function main() {
   // Uniswap V3 SwapRouter address - replace with correct address for your network
-  const SWAP_ROUTER = "0xE592427A0AEce92De3Edee1F18E0157C05861564";
+  const SWAP_ROUTER = "0xe2DB835566F8677d6889ffFC4F3304e8Df5Fc1df";
 
   const DeFAI = await ethers.getContractFactory("DeFAI");
   const defai = await DeFAI.deploy(SWAP_ROUTER);
