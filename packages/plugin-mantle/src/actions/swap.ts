@@ -114,19 +114,25 @@ export const swapAction: Action = {
             console.log("Swap options:", swapOptions);
 
             const swap = await walletProvider.swap(swapOptions);
-            
-            console.log(swap);
-            elizaLogger.log("Swap executed:", swap);
-
-            elizaLogger.success("Swap executed successfully:", swap);
+            if (!swap?.success) {
+                throw new Error("Swap failed");
+            }
 
             callback?.({
-                text: "Swap executed successfully"
+                text: `Swap executed successfully. Hash: ${swap.hash}`
+            });
+
+            callback?.({
+                text: "balance of your wallet address is " + await walletProvider.getWalletBalance()
             });
 
             return true;
-        } catch (error) {
-            elizaLogger.error("Error generating swap content:", error);
+        } catch (error: any) {
+            elizaLogger.error("Swap error:", error.message);
+            callback?.({
+                text: `Swap failed: ${error.message}`
+            });
+            return false;
         }
 
 

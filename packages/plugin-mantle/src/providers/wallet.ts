@@ -166,11 +166,47 @@ export class WalletProvider {
         return http(chain.rpcUrls.default.http[0]);
     };
 
+    private async waitForTransaction(hash: `0x${string}`) {
+        const publicClient = this.getPublicClient(this.currentChain);
+        let retries = 20;
+        while (retries > 0) {
+            try {
+                const receipt = await publicClient.getTransactionReceipt({ hash });
+                if (receipt.status === 'success') return true;
+                return false;
+            } catch (e) {
+                await new Promise(r => setTimeout(r, 1000));
+                retries--;
+            }
+        }
+        throw new Error('Transaction confirmation timeout');
+    }
+
     async swap(swapOptions: any): Promise<any> {
         const client = this.getWalletClient(this.currentChain);
-        console.log(swapOptions);
-        console.log(client);
         try {
+            // Approve tokens first
+            const approveHash = await client.writeContract({
+                address: swapOptions.srcToken as `0x${string}`,
+                abi: [{
+                    name: 'approve',
+                    type: 'function',
+                    stateMutability: 'nonpayable',
+                    inputs: [{ name: 'spender', type: 'address' }, { name: 'amount', type: 'uint256' }],
+                    outputs: [{ name: '', type: 'bool' }]
+                }],
+                functionName: 'approve',
+                args: [
+                    `0x2D6Fb41bA373da1a05B211D6C306d4684E6acD55` as `0x${string}`,
+                    BigInt(swapOptions.amount)
+                ],
+                account: this.account,
+                chain: this.chains[this.currentChain]
+            });
+
+            await this.waitForTransaction(approveHash);
+
+            // Execute swap with updated router address
             const hash = await client.writeContract({
                 address: `0x2D6Fb41bA373da1a05B211D6C306d4684E6acD55` as `0x${string}`,
                 abi: swapAbi,
@@ -184,11 +220,10 @@ export class WalletProvider {
                 account: this.account
             });
             
-            elizaLogger.log("Swap transaction hash:", hash);
-            return hash;
-        } catch (error) {
-            elizaLogger.error("Error swapping tokens:", error);
-            throw error; // Re-throw to handle in calling code
+            return { success: true, hash };
+        } catch (error: any) {
+            elizaLogger.error("Swap error:", error.message || error);
+            throw new Error(error.message || "Swap failed");
         }
     }
 }
