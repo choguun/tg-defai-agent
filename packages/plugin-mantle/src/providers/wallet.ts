@@ -106,6 +106,7 @@ export class WalletProvider {
             const balance = await client.getBalance({
                 address: this.account.address,
             });
+
             const balanceFormatted = formatUnits(balance, 18);
             elizaLogger.log(
                 "Wallet balance cached for chain: ",
@@ -165,20 +166,29 @@ export class WalletProvider {
         return http(chain.rpcUrls.default.http[0]);
     };
 
-    async swap(swapOptions: any): Promise<void> {
+    async swap(swapOptions: any): Promise<any> {
         const client = this.getWalletClient(this.currentChain);
+        console.log(swapOptions);
+        console.log(client);
         try {
-            const swap = await client.writeContract({
-                address: swapOptions.srcToken as `0x${string}`,
+            const hash = await client.writeContract({
+                address: `0x2D6Fb41bA373da1a05B211D6C306d4684E6acD55` as `0x${string}`,
                 abi: swapAbi,
                 functionName: "swapExactInputSingle",
-                args: [swapOptions.srcToken, swapOptions.destToken, swapOptions.amountIn],
+                args: [
+                    swapOptions.srcToken as `0x${string}`,
+                    swapOptions.destToken as `0x${string}`, 
+                    BigInt(swapOptions.amount)
+                ],
                 chain: this.chains[this.currentChain],
                 account: this.account
             });
-            elizaLogger.log("Swap executed:", swap);
+            
+            elizaLogger.log("Swap transaction hash:", hash);
+            return hash;
         } catch (error) {
             elizaLogger.error("Error swapping tokens:", error);
+            throw error; // Re-throw to handle in calling code
         }
     }
 }

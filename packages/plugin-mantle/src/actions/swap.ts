@@ -24,8 +24,8 @@ export const swapTemplate = `Respond with a JSON markdown block containing only 
 Example response:
 \`\`\`json
 {
-    "srcToken": "0xeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee",
-    "destToken": "0x833589fcd6edb6e08f4c7c32d4f71b54bda02913",
+    "srcToken": "0x09bc4e0d864854c6afb6eb9a9cdf58ac190d0df9",
+    "destToken": "0xdeaddeaddeaddeaddeaddeaddeaddeaddead0000",
     "amount": "1"
 }
 \`\`\`
@@ -51,13 +51,13 @@ Respond with a JSON markdown block containing only the extracted values. Use nul
 \`\`\``;
 
 const TOKEN_ADDRESSES = {
-    "MNT": "0xdeaddeaddeaddeaddeaddeaddeaddeaddead0000",
-    "USDC": "0x09bc4e0d864854c6afb6eb9a9cdf58ac190d0df9",
+    "mnt": "0xdeaddeaddeaddeaddeaddeaddeaddeaddead0000",
+    "usdc": "0x09bc4e0d864854c6afb6eb9a9cdf58ac190d0df9",
 };
 
 const TOKEN_DECIMALS = {
-    "MNT": 18,
-    "USDC": 6,
+    "mnt": 18,
+    "usdc": 6,
 };
 
 export const swapAction: Action = {
@@ -75,6 +75,9 @@ export const swapAction: Action = {
         callback?: HandlerCallback) => {
         elizaLogger.log("Starting Mantle SWAP handler...");
         const walletProvider = await initWalletProvider(runtime);
+        console.log(walletProvider);
+        elizaLogger.log("Wallet provider initialized");
+        elizaLogger.log(walletProvider);
         // const action = new SwapAction(walletProvider);
 
         if (!state) {
@@ -96,9 +99,11 @@ export const swapAction: Action = {
                 modelClass: ModelClass.LARGE,
             });
 
-            const srcToken = TOKEN_ADDRESSES[content.srcToken as keyof typeof TOKEN_ADDRESSES];
-            const destToken = TOKEN_ADDRESSES[content.destToken as keyof typeof TOKEN_ADDRESSES];
-            const amount = String(parseFloat(content.amount) * 10 ** TOKEN_DECIMALS[content.srcToken as keyof typeof TOKEN_DECIMALS]);
+            console.log(content);
+
+            const srcToken = TOKEN_ADDRESSES[content.srcToken.toLowerCase() as keyof typeof TOKEN_ADDRESSES];
+            const destToken = TOKEN_ADDRESSES[content.destToken.toLowerCase() as keyof typeof TOKEN_ADDRESSES];
+            const amount = String(parseFloat(content.amount) * 10 ** TOKEN_DECIMALS[content.srcToken.toLowerCase() as keyof typeof TOKEN_DECIMALS]);
 
             const swapOptions = {
                 srcToken,
@@ -109,6 +114,9 @@ export const swapAction: Action = {
             console.log("Swap options:", swapOptions);
 
             const swap = await walletProvider.swap(swapOptions);
+            
+            console.log(swap);
+            elizaLogger.log("Swap executed:", swap);
 
             elizaLogger.success("Swap executed successfully:", swap);
 
@@ -128,21 +136,21 @@ export const swapAction: Action = {
             {
                 user: "{{user1}}",
                 content: {
-                    text: "Swap 1 SOL for USDC"
+                    text: "Swap 1 USDC for `USDC`"
                 }
             },
             {
                 user: "{{user1}}",
                 content: {
-                    srcToken: "SOL",
-                    destToken: "USDC",
+                    srcToken: "USDC",
+                    destToken: "MNT",
                     amount: 1,
                 },
             },
             {
                 user: "{{user2}}",
                 content: {
-                    text: "Processing swap: 1 SOL -> USDC",
+                    text: "Processing swap: 1 USDC -> MNT",
                     action: "EXECUTE_SWAP"
                 }
             },
