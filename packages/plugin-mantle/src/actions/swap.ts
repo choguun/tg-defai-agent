@@ -24,29 +24,40 @@ export const swapTemplate = `Respond with a JSON markdown block containing only 
 Example response:
 \`\`\`json
 {
-    "srcToken": "<TOKEN_ADDRESS>",
-    "destToken": "<TOKEN_ADDRESS>",
-    "amount": "1000",
+    "srcToken": "0xeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee",
+    "destToken": "0x833589fcd6edb6e08f4c7c32d4f71b54bda02913",
+    "amount": "1"
 }
 \`\`\`
 
-User message:
-"{{currentMessage}}"
+{{recentMessages}}
 
-Given the message, extract the following information about the requested token transfer:
-- srcToken
-- destToken
-- Amount to swap
+Given the recent messages and wallet information below:
 
-Respond with a JSON markdown block containing only the extracted values.`;
+{{walletInfo}}
+
+Extract the following information about the requested token swap:
+- srcToken (the token being sold)
+- destToken (the token being bought)
+- amount (the amount of the token being sold)
+
+Respond with a JSON markdown block containing only the extracted values. Use null for any values that cannot be determined. The result should be a valid JSON object with the following schema:
+\`\`\`json
+{
+    "srcToken": string | null,
+    "destToken": string | null,
+    "amount":  number | string | null
+}
+\`\`\``;
 
 const TOKEN_ADDRESSES = {
-    "MNT": "0x3c499c542cef5e3811e1192ce70d8cc03d5c3359",
+    "MNT": "0xdeaddeaddeaddeaddeaddeaddeaddeaddead0000",
     "USDC": "0x09bc4e0d864854c6afb6eb9a9cdf58ac190d0df9",
 };
 
 const TOKEN_DECIMALS = {
     "MNT": 18,
+    "USDC": 6,
 };
 
 export const swapAction: Action = {
@@ -85,15 +96,21 @@ export const swapAction: Action = {
                 modelClass: ModelClass.LARGE,
             });
 
+            const srcToken = TOKEN_ADDRESSES[content.srcToken as keyof typeof TOKEN_ADDRESSES];
+            const destToken = TOKEN_ADDRESSES[content.destToken as keyof typeof TOKEN_ADDRESSES];
+            const amount = String(parseFloat(content.amount) * 10 ** TOKEN_DECIMALS[content.srcToken as keyof typeof TOKEN_DECIMALS]);
+
             const swapOptions = {
-                srcToken: content.srcToken,
-                destToken: content.destToken,
-                amount: content.amount,
+                srcToken,
+                destToken,
+                amount,
             };
+
+            console.log("Swap options:", swapOptions);
 
             const swap = await walletProvider.swap(swapOptions);
 
-            elizaLogger.success("Swap executed successfully:");
+            elizaLogger.success("Swap executed successfully:", swap);
 
             callback?.({
                 text: "Swap executed successfully"
